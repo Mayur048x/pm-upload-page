@@ -114,7 +114,7 @@ export default function SubmitPage() {
         const fileName = `project_${task.project_id}/task_${task.id}/${Date.now()}_${file.name}`;
 
         const { error: uploadError } = await supabase.storage
-          .from('task-outputs')
+          .from('task-output')
           .upload(fileName, file, {
             cacheControl: '3600',
             upsert: false,
