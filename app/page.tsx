@@ -14,7 +14,7 @@ export default function SubmitPage() {
   const [files, setFiles] = useState([]);
   const [notes, setNotes] = useState('');
   const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
