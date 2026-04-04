@@ -10,8 +10,8 @@ const supabase = createClient(
 );
 
 export default function SubmitPage() {
-  const [task, setTask] = useState(null);
-  const [files, setFiles] = useState([]);
+  const [task, setTask] = useState<any>(null);
+  const [files, setFiles] = useState<any[]>([]);
   const [notes, setNotes] = useState('');
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +31,7 @@ export default function SubmitPage() {
     loadTask(taskId);
   }, []);
 
-  async function loadTask(taskId) {
+  async function loadTask(taskId: string ):
     try {
       console.log('Loading task:', taskId);
 
@@ -56,7 +56,7 @@ export default function SubmitPage() {
       }
 
       setTask(taskData);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Load Error:', err);
       setError('Failed to load task: ' + err.message);
     }
@@ -135,7 +135,7 @@ export default function SubmitPage() {
       await supabase.from('tasks').update({ status: 'submitted' }).eq('id', task.id);
 
       setSuccess(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Upload error:', err);
       alert('Upload failed: ' + err.message);
     } finally {
