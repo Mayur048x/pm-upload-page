@@ -9,13 +9,33 @@ const supabase = createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhhemZ1ZG9hc2h2YWZjZ3JtbGtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5OTY0MjIsImV4cCI6MjA3NDU3MjQyMn0.2z0TE2-LevP0vMiT8Zs3t8empcGfk1elT__VjQXHn0w'
 );
 
+interface Task {
+  id: number;
+  task_id: number;
+  task_title: string;
+  assigned_to: string;
+  project_id: number;
+  task_context: string;
+  projects: {
+    project_name: string;
+    deliverables: string[];
+  };
+}
+
+interface UploadedFile {
+  name: string;
+  url: string;
+  size: number;
+  type: string;
+}
+
 export default function SubmitPage() {
-  const [task, setTask] = useState<any>(null);
-  const [files, setFiles] = useState<any[]>([]);
-  const [notes, setNotes] = useState('');
-  const [uploading, setUploading] = useState(false);
+  const [task, setTask] = useState<Task | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [notes, setNotes] = useState<string>('');
+  const [uploading, setUploading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [success, setSuccess] = useState<boolean>(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -27,11 +47,10 @@ export default function SubmitPage() {
       return;
     }
 
-    // CALL THE FUNCTION
     loadTask(taskId);
   }, []);
 
-  async function loadTask(taskId: string ):
+  async function loadTask(taskId: string) {
     try {
       console.log('Loading task:', taskId);
 
@@ -39,7 +58,7 @@ export default function SubmitPage() {
         .from('tasks')
         .select(`
           *,
-          projects(
+          projects (
             project_name,
             deliverables
           )
@@ -55,15 +74,20 @@ export default function SubmitPage() {
         return;
       }
 
-      setTask(taskData);
-    } catch (err: any) {
+      if (!taskData) {
+        setError('Task not found');
+        return;
+      }
+
+      setTask(taskData as Task);
+    } catch (err) {
       console.error('Load Error:', err);
-      setError('Failed to load task: ' + err.message);
+      setError('Failed to load task: ' + (err as Error).message);
     }
   }
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop: (acceptedFiles) => {
+    onDrop: (acceptedFiles: File[]) => {
       setFiles((prev) => [...prev, ...acceptedFiles]);
     },
   });
@@ -74,14 +98,20 @@ export default function SubmitPage() {
       return;
     }
 
+    if (!task) {
+      alert('Task not loaded');
+      return;
+    }
+
     setUploading(true);
 
     try {
-      const uploadedFiles = [];
+      const uploadedFiles: UploadedFile[] = [];
 
       // Upload each file
       for (const file of files) {
-        const fileName = `task_${task.id}_${Date.now()}_${file.name}`;
+        // Organized path: project_X/task_Y/timestamp_filename
+        const fileName = `project_${task.project_id}/task_${task.id}/${Date.now()}_${file.name}`;
 
         const { error: uploadError } = await supabase.storage
           .from('task-outputs')
@@ -135,9 +165,9 @@ export default function SubmitPage() {
       await supabase.from('tasks').update({ status: 'submitted' }).eq('id', task.id);
 
       setSuccess(true);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Upload error:', err);
-      alert('Upload failed: ' + err.message);
+      alert('Upload failed: ' + (err as Error).message);
     } finally {
       setUploading(false);
     }
@@ -196,16 +226,13 @@ export default function SubmitPage() {
           {/* Task Context */}
           {task.task_context && (
             <div className="mb-8 p-4 bg-blue-50 rounded-lg">
-              <h3 className="font-semibold text-gray-900 mb-3">📦 Task Context & Instructions:</h3>
-              
-              {/* This replaces the <ul> and .map() */}
-              <div className="text-gray-700 whitespace-pre-wrap">
+              <h3 className="font-semibold text-gray-900 mb-3">📋 Task Context & Instructions:</h3>
+              <div className="text-gray-700 whitespace-pre-wrap text-sm">
                 {task.task_context}
               </div>
-
             </div>
           )}
-          
+
           {/* Upload Zone */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -260,14 +287,14 @@ export default function SubmitPage() {
 
           {/* Notes */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-black-900 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Notes (optional)
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={4}
-              className="w-full px-4 py-2 border border-gray-900 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
               placeholder="Any additional notes for your manager..."
             />
           </div>
