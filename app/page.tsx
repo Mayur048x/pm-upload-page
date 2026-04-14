@@ -4,10 +4,10 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useDropzone } from 'react-dropzone';
 
-// Initialize Supabase
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 interface Task {
   id: number;
@@ -47,12 +47,32 @@ export default function SubmitPage() {
       return;
     }
 
-    loadTask(taskId);
+    validateAndLoad(taskId, token);
   }, []);
 
-  async function loadTask(taskId: string) {
+  async function validateAndLoad(taskId: string, token: string) {
     try {
-      console.log('Loading task:', taskId);
+      const { data: tokenData, error: tokenError } = await supabase
+        .from('upload_tokens')
+        .select('*')
+        .eq('task_id', taskId)
+        .eq('token', token)
+        .single();
+
+      if (tokenError || !tokenData) {
+        setError('Invalid or expired link');
+        return;
+      }
+
+      if (tokenData.used) {
+        setError('This link has already been used');
+        return;
+      }
+
+      if (new Date(tokenData.expires_at) < new Date()) {
+        setError('This link has expired. Please contact your manager for a new one.');
+        return;
+      }
 
       const { data: taskData, error: taskError } = await supabase
         .from('tasks')
@@ -66,20 +86,13 @@ export default function SubmitPage() {
         .eq('id', taskId)
         .single();
 
-      console.log('Task Data:', taskData);
-      console.log('Task Error:', taskError);
-
-      if (taskError) {
-        setError('Task not found: ' + taskError.message);
-        return;
-      }
-
-      if (!taskData) {
+      if (taskError || !taskData) {
         setError('Task not found');
         return;
       }
 
       setTask(taskData as Task);
+
     } catch (err) {
       console.error('Load Error:', err);
       setError('Failed to load task: ' + (err as Error).message);
@@ -108,10 +121,8 @@ export default function SubmitPage() {
     try {
       const uploadedFiles: UploadedFile[] = [];
 
-      // Upload each file
       for (const file of files) {
-        // Organized path: project_X/task_Y/timestamp_filename
- const fileName = `${task.projects.project_name}/task_${task.task_title}/${Date.now()}_${file.name}`;
+        const fileName = `${task.projects.project_name}/task_${task.task_title}/${Date.now()}_${file.name}`;
 
         const { error: uploadError } = await supabase.storage
           .from('task-output')
@@ -122,7 +133,6 @@ export default function SubmitPage() {
 
         if (uploadError) throw uploadError;
 
-        // Get public URL
         const { data } = supabase.storage
           .from('task-output')
           .getPublicUrl(fileName);
@@ -135,12 +145,8 @@ export default function SubmitPage() {
         });
       }
 
-      console.log('Uploaded files:', uploadedFiles);
-
-      // Generate view_id
       const viewId = Math.random().toString(36).substring(2, 10);
 
-      // Create task_outputs record
       const { data: outputData, error: outputError } = await supabase
         .from('task_outputs')
         .insert({
@@ -161,8 +167,20 @@ export default function SubmitPage() {
 
       console.log('Output saved:', outputData);
 
-      // Update task status
-      await supabase.from('tasks').update({ status: 'submitted' }).eq('id', task.id);
+      await supabase
+        .from('tasks')
+        .update({ status: 'submitted' })
+        .eq('id', task.id);
+
+      // Mark token as used
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('token');
+
+      await supabase
+        .from('upload_tokens')
+        .update({ used: true })
+        .eq('task_id', task.id)
+        .eq('token', token);
 
       setSuccess(true);
     } catch (err) {
@@ -215,7 +233,6 @@ export default function SubmitPage() {
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="max-w-3xl mx-auto">
         <div className="bg-white rounded-lg shadow-lg p-8">
-          {/* Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
               📋 Submit: {task.task_title}
@@ -223,7 +240,6 @@ export default function SubmitPage() {
             <p className="text-gray-600">📂 Project: {task.projects?.project_name}</p>
           </div>
 
-          {/* Task Context */}
           {task.task_context && (
             <div className="mb-8 p-4 bg-blue-50 rounded-lg">
               <h3 className="font-semibold text-gray-900 mb-3">📋 Task Context & Instructions:</h3>
@@ -233,7 +249,6 @@ export default function SubmitPage() {
             </div>
           )}
 
-          {/* Upload Zone */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Upload Files
@@ -257,7 +272,6 @@ export default function SubmitPage() {
             </div>
           </div>
 
-          {/* File List */}
           {files.length > 0 && (
             <div className="mb-6">
               <h3 className="font-medium text-gray-900 mb-3">Selected Files:</h3>
@@ -285,7 +299,6 @@ export default function SubmitPage() {
             </div>
           )}
 
-          {/* Notes */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Notes (optional)
@@ -299,7 +312,6 @@ export default function SubmitPage() {
             />
           </div>
 
-          {/* Submit Button */}
           <button
             onClick={handleSubmit}
             disabled={uploading || files.length === 0}
