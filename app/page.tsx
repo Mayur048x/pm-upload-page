@@ -111,7 +111,7 @@ export default function SubmitPage() {
       // Upload each file
       for (const file of files) {
         // Organized path: project_X/task_Y/timestamp_filename
-        const fileName = `project_${project.project_name}/task_${task.task_title}/${Date.now()}_${file.name}`;
+ const fileName = `${task.projects.project_name}/task_${task.task_title}/${Date.now()}_${file.name}`;
 
         const { error: uploadError } = await supabase.storage
           .from('task-output')
@@ -148,7 +148,7 @@ export default function SubmitPage() {
           project_id: task.project_id,
           view_id: viewId,
           output_type: 'files',
-          output_content: JSON.stringify(uploadedFiles),
+          output_content: uploadedFiles,
           submitted_by_name: task.assigned_to,
           revision_number: 1,
           approval_status: 'pending',
