@@ -4,10 +4,10 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useDropzone } from 'react-dropzone';
 
+// Initialize Supabase
 const supabase = createClient(
-  'https://hazfudoashvafcgrmlkh.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhhemZ1ZG9hc2h2YWZjZ3JtbGtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5OTY0MjIsImV4cCI6MjA3NDU3MjQyMn0.2z0TE2-LevP0vMiT8Zs3t8empcGfk1elT__VjQXHn0w'
-);
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
 interface Task {
   id: number;
