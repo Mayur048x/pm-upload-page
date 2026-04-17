@@ -182,6 +182,19 @@ export default function SubmitPage() {
         .eq('task_id', task.id)
         .eq('token', token);
 
+      // ✅ WEBHOOK TRIGGER TO N8N
+      await fetch('https://my-n8n-79ua.onrender.com/webhook/review-page', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          task_title: task.task_title,
+          assigned_to: task.assigned_to,
+          project_name: task.projects.project_name,
+        }),
+      });
+
       setSuccess(true);
     } catch (err) {
       console.error('Upload error:', err);
